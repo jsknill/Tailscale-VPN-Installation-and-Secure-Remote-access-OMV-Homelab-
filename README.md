@@ -1,5 +1,5 @@
 # Tailscale-VPN-Installation-and-Secure-Remote-access-OMV-Homelab-
-Overview
+#Overview
 
 The goal of this project was to securely access my home lab from anywhere without exposing services directly to the Internet or configuring port forwarding on my router.
 
@@ -12,7 +12,7 @@ Future services running on the network
 
 using Tailscale.
 
-Creating the Tailnet
+#Creating the Tailnet
 
 I created a Tailnet by visiting the Tailscale website and signing in with my Google account.
 
@@ -24,7 +24,7 @@ Both devices received their own private Tailscale IP addresses.
 
 To verify connectivity, I successfully pinged my phone from my Windows PC using its Tailscale IP.
 
-Installing Tailscale on OpenMediaVault
+#Installing Tailscale on OpenMediaVault
 
 Using Command Prompt on my Windows PC, I connected to OMV using SSH.
 
@@ -48,32 +48,45 @@ http://100.xxx.xxx.xxx
 
 This verified that the VPN was functioning correctly.
 
-Configuring Nextcloud
+#Configuring Nextcloud
 
-Nextcloud initially displayed an "Untrusted Domain" error when accessed through its Tailscale IP.
-
-This occurred because Nextcloud only accepts connections from addresses listed in its Trusted Domains configuration.
-
-Using the Docker OCC utility inside the Nextcloud container, I added:
-
-localhost
-the OMV LAN IP
-the Tailscale IP
-
-to the Trusted Domains list.
-
-After updating the configuration, Nextcloud was accessible remotely.
+After verifying that I could successfully reach OpenMediaVault through its Tailscale IP address, I attempted to access my Nextcloud instance using:
 
 http://100.xxx.xxx.xxx:8080
-Enabling Tailscale SSH
 
-I enabled Tailscale SSH by running:
+Instead of loading Nextcloud, I received an "Untrusted Domain" error.
 
-tailscale up --ssh
+This is a built-in security feature in Nextcloud.
 
-This allows SSH connections to be made securely over the encrypted Tailnet without exposing SSH directly to the Internet.
+When a browser connects to a website, it sends the address it used (known as the Host Header) to the server. Nextcloud compares that address against a list of approved addresses called Trusted Domains.
 
-Configuring the NAS as a Subnet Router
+Since I was now accessing Nextcloud using its new Tailscale IP address, Nextcloud saw a request coming from an address it had never been configured to trust and intentionally refused the connection. This prevents attackers from tricking Nextcloud into serving requests through unauthorized domains or hostnames.
+
+Because my Nextcloud installation is running inside a Docker container, I couldn't simply edit the configuration from the host operating system. Instead, I opened a shell inside the running container and used Nextcloud's built-in OCC (OwnCloud Console) command-line tool to modify the configuration.
+
+Using OCC, I added the addresses that I wanted Nextcloud to trust:
+
+localhost
+the OMV LAN address (192.168.xxx.xxx)
+the Tailscale address (100.xxx.xxx.xxx)
+
+Each trusted domain was added individually to Nextcloud's configuration.
+
+After updating the Trusted Domains list, I verified the changes and then reloaded the site.
+
+Nextcloud now accepted connections from both:
+
+http://192.168.xxx.xxx:8080
+
+while on my local network, and
+
+http://100.xxx.xxx.xxx:8080
+
+when connected through Tailscale.
+
+This step taught me how containerized applications maintain their own configuration, how Docker's exec command can be used to administer a running container, and why web applications often implement host validation as an additional security measure. It also reinforced the importance of understanding why a service is rejecting a connection rather than assuming the service itself is offline.
+
+#Configuring the NAS as a Subnet Router
 
 One of the primary goals of this project was to access my entire home network remotely.
 
@@ -98,7 +111,7 @@ sysctl --system
 
 After applying the configuration, the subnet route was approved inside the Tailscale Admin Console.
 
-Final Testing
+#Final Testing
 
 To verify everything was working correctly:
 
@@ -114,7 +127,7 @@ http://192.168.xxx.xxx:8080
 
 The successful connection confirmed that subnet routing was working correctly and that my phone could securely access services hosted on my home network while away from home.
 
-Skills Demonstrated
+#Skills Demonstrated
 Linux command-line administration
 SSH remote management
 Docker container administration
